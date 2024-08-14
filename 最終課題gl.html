@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Three.js Space Scene with Fireworks</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        // シーン、カメラ、レンダラーのセットアップ
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // 背景画像の読み込み
+        const loader = new THREE.TextureLoader();
+        loader.load('https://pbs.twimg.com/media/FEza0BJaAAA6UYd?format=jpg&name=large', function(texture) {  // 指定されたURLを使用
+            scene.background = texture;
+        });
+
+        // 地球の作成
+        const geometry = new THREE.SphereGeometry(1, 32, 32);
+        const earthTexture = loader.load('https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg');
+        const material = new THREE.MeshBasicMaterial({ map: earthTexture });
+        const sphere = new THREE.Mesh(geometry, material);
+        scene.add(sphere);
+
+        // カメラ位置の設定
+        camera.position.z = 5;
+
+        // コントロールの追加
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+        // パーティクルシステムの作成
+        const particleCount = 1000;
+        const particlesGeometry = new THREE.BufferGeometry();
+        const particlesMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.05 });
+
+        // パーティクルの位置をランダムに設定
+        const positions = [];
+        for (let i = 0; i < particleCount; i++) {
+            const x = THREE.MathUtils.randFloatSpread(100);
+            const y = THREE.MathUtils.randFloatSpread(100);
+            const z = THREE.MathUtils.randFloatSpread(100);
+            positions.push(x, y, z);
+        }
+
+        particlesGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+
+        const particles = new THREE.Points(particlesGeometry, particlesMaterial);
+        scene.add(particles);
+
+        // 花火パーティクルの作成
+        function createFirework() {
+            const fireworkCount = 100;
+            const fireworkGeometry = new THREE.BufferGeometry();
+            const fireworkMaterial = new THREE.PointsMaterial({ color: 0xffcc00, size: 0.1 });
+
+            const fireworkPositions = [];
+            const speed = [];
+
+            for (let i = 0; i < fireworkCount; i++) {
+                const x = 0;
+                const y = 0;
+                const z = 0;
+
+                const angle = Math.random() * Math.PI * 2;
+                const vz = Math.random() * 2 - 1;
+                const vx = Math.sqrt(1 - vz * vz) * Math.cos(angle);
+                const vy = Math.sqrt(1 - vz * vz) * Math.sin(angle);
+
+                fireworkPositions.push(x, y, z);
+                speed.push(vx, vy, vz);
+            }
+
+            fireworkGeometry.setAttribute('position', new THREE.Float32BufferAttribute(fireworkPositions, 3));
+            const fireworkParticles = new THREE.Points(fireworkGeometry, fireworkMaterial);
+            scene.add(fireworkParticles);
+
+            const maxLifetime = 100;
+            let lifetime = 0;
+
+            function animateFirework() {
+                if (lifetime < maxLifetime) {
+                    lifetime++;
+                    const positions = fireworkGeometry.attributes.position.array;
+                    for (let i = 0; i < positions.length; i += 3) {
+                        positions[i] += speed[i];
+                        positions[i + 1] += speed[i + 1];
+                        positions[i + 2] += speed[i + 2];
+                    }
+                    fireworkGeometry.attributes.position.needsUpdate = true;
+                    requestAnimationFrame(animateFirework);
+                } else {
+                    scene.remove(fireworkParticles);
+                    fireworkGeometry.dispose();
+                    fireworkMaterial.dispose();
+                }
+            }
+
+            animateFirework();
+        }
+
+        // アニメーションループ
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // 球体の回転
+            sphere.rotation.y += 0.01;
+
+            // パーティクルの回転（視覚的な動きを追加）
+            particles.rotation.y += 0.002;
+
+            // 花火を生成
+            if (Math.random() < 0.02) {
+                createFirework();
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // リサイズ対応
+        window.addEventListener('resize', () => {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+        });
+    </script>
+</body>
+</html>
